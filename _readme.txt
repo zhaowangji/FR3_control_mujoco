@@ -1,0 +1,1 @@
+modify --scene.xml to move the red box; also remember to change the target pos to move the green dot
