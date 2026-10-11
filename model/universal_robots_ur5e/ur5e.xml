@@ -116,7 +116,8 @@
                   <body name="force_sensor" pos="0 0.1 0" euler="3.14 0 3.14">
                     <!-- size="半径 0.04m, 半厚度 0.01m"，面接触稳定性最高 -->
                     <geom name="force_sensor_geom" type="cylinder" mass="0.0" size="0.04 0.01"
-                          euler="1.5708 0 0" rgba="0 1 0 0.3"/>
+                          euler="1.5708 0 0" rgba="0 1 0 0.3"
+                          solref="0.02 1.0" solimp="0.9 0.95 0.001 0.5 2"/>
                     <site name="force_sensor_site" pos="0 0 0" quat="1 0 0 0"/>
                   </body>
                 </body>
