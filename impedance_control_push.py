@@ -141,6 +141,44 @@ class ImpedanceController:
                     + self.mass @ self.M_inv @ (self.D @ vel_error + self.K @ pos_error)
         return F_control
 
+class PeriodicDisturbanceGenerator:
+    """接触触发式周期性阶跃扰动力生成器"""
+    def __init__(self, interval=0.5, force_range=(-30.0, -5.0), contact_threshold=1.5):
+        """
+        :param interval: 外力刷新周期 (秒)
+        :param force_range: 扰动力范围 (N)
+        :param contact_threshold: 触发激活的最小接触力阈值 (N)
+        """
+        self.interval = interval
+        self.force_range = force_range
+        self.contact_threshold = contact_threshold
+        
+        self.is_triggered = False      # 是否已发生过有效接触
+        self.last_update_time = -float('inf')
+        self.current_force = 0.0
+
+    def update(self, current_time, current_contact_force_mag):
+        """
+        :param current_time: 仿真时间 data.time
+        :param current_contact_force_mag: 接触力幅值 norm(F)
+        """
+        # 1. 尚未接触阶段：检测是否首次突破接触力阈值
+        if not self.is_triggered:
+            if current_contact_force_mag >= self.contact_threshold:
+                self.is_triggered = True
+                self.last_update_time = current_time
+                self.current_force = np.random.uniform(self.force_range[0], self.force_range[1])
+                print(f"\n[Contact Triggered!] Time: {current_time:.3f}s, Initial Applied Force: {self.current_force:.2f} N")
+            else:
+                return 0.0
+
+        # 2. 接触已经发生：按每 interval 秒刷新一次阻力
+        if current_time - self.last_update_time >= self.interval:
+            self.last_update_time = current_time
+            self.current_force = np.random.uniform(self.force_range[0], self.force_range[1])
+            print(f"[Disturbance Update] Time: {current_time:.3f}s | Applied Force: {self.current_force:.2f} N")
+
+        return self.current_force
 
 def main():
     model = mujoco.MjModel.from_xml_path('model/universal_robots_ur5e/scene.xml')
@@ -180,6 +218,9 @@ def main():
     force_sensor = ForceSensor(model, data, window_size=50)
     plotter = ADAMSForcePlotter(update_interval=15)
 
+    red_box_id=mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_box")
+    force_disturbance_generator = PeriodicDisturbanceGenerator(interval=0.5, force_range=(-30.0, -5.0))
+
     # 控制参数
     F_push_ff = np.array([0.0, 10.0, 0.0])  # Y 方向 10N 前馈推力
     Kp_rot = 30.0                           # 姿态锁定刚度
@@ -190,6 +231,16 @@ def main():
         viewer_init(viewer)
         while viewer.is_running():
             filtered_force = force_sensor.filter()
+
+            filtered_force = force_sensor.filter()
+            contact_force_mag = float(np.linalg.norm(filtered_force))
+
+            # 3. 接触判定并计算时变外力扰动 (接触前返回 0.0，接触后周期性生成)
+            f_dist_y = force_disturbance_generator.update(data.time, contact_force_mag)
+
+            # 4. 施加扰动力到盒子 (仅在产生非零扰动时写入)
+            data.xfrc_applied[red_box_id] = np.zeros(6)
+            data.xfrc_applied[red_box_id][4] = f_dist_y  # Y 轴平移阻力
 
             # 1. 动力学重力与偏置补偿
             tau_bias = data.qfrc_bias[:6].copy()
@@ -235,6 +286,8 @@ def main():
             plotter.update(filtered_force, box_displacement)
 
             viewer.sync()
+
+            print(f"Time: {data.time:.2f}s | Force: {contact_force_mag:.2f}N | Disturbance: {f_dist_y:.1f}N | F_control: {F_impedance}")
 
 
 if __name__ == "__main__":
