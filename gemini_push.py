@@ -185,6 +185,8 @@ def main():
             box_displacement = data.qpos[box_qpos_adr]
             filtered_force = force_sensor.filter()
 
+            print(filtered_force)
+
             # 3. 更新可视化
             plotter.update(filtered_force, box_displacement)
 

@@ -37,7 +37,7 @@
 
     <body name="red_box" pos="-0.1 0.5 0.1" euler="0 0 0">
         <joint name="red_box_joint" type="slide" axis="0 1 0"
-          stiffness="10.0" damping="0.0" springref="0.0"/>
+          stiffness="30.0" damping="0.0" springref="0.0"/>
         <geom name="red_box_geom" type="box" size="0.1 0.1 0.1" rgba="1 0 0 1" mass="1.0"/>
     </body>
 
