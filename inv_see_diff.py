@@ -4,11 +4,11 @@ import ikpy.chain
 import transforms3d as tf
  
 def main():
-    model = mujoco.MjModel.from_xml_path('model/universal_robots_ur5e/scene.xml')
+    model = mujoco.MjModel.from_xml_path('model/universal_robots_ur5e/scene_backup.xml')
     data = mujoco.MjData(model)
     my_chain = ikpy.chain.Chain.from_urdf_file("model/ur5e.urdf")
  
-    ee_pos = [-0.1, 0.3, 0.1]
+    ee_pos = [-0.1, 0.3, 0.3]
     ee_euler = [3.14, 0, 1.57]
     ref_pos = [0, 0, -1.57, -1.34, 2.65, -1.3, 1.55, 0, 0]
     ee_orientation = tf.euler.euler2mat(*ee_euler)

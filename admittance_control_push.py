@@ -5,6 +5,8 @@ import transforms3d as tf
 import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
+import time
+import numpy
 
 
 def viewer_init(viewer):
@@ -100,6 +102,13 @@ class ADAMSForcePlotter:
         plt.pause(0.001)
         self.frame_count = 0
 
+def key_callback(keycode):
+    global step_trigger, is_paused
+    if keycode == 32:
+        is_paused = not is_paused
+        print("运行中..." if not is_paused else "已暂停")
+    elif keycode in (ord('N'), ord('n')):
+        step_trigger = True
 
 class ForceSensor:
     def __init__(self, model, data, window_size=50):
@@ -112,6 +121,7 @@ class ForceSensor:
         """获取并滑动平均滤波力传感器数据"""
         # sensordata 获取力传感器输出 (Ur5e 末端安装的 force site)
         force_local_raw = self.data.sensordata[:3].copy() * -1
+        # print(self.data.sensordata[:3])
         self.force_history.append(force_local_raw)
         filtered_force = np.mean(self.force_history, axis=0)
         return filtered_force
@@ -198,19 +208,29 @@ class PeriodicDisturbanceGenerator:
 
         return self.current_force
 
+def calc_dist(dotA,dotB):
+    # print(dotA[0],dotB[0],dotA[1],dotB[1],dotA[2],dotB[2])
+    res=numpy.sqrt((dotA[0]-dotB[0])*(dotA[0]-dotB[0])+(dotA[1]-dotB[1])*(dotA[1]-dotB[1])+(dotA[2]-dotB[2])*(dotA[2]-dotB[2]))
+    return res    
+
 def main():
+    global step_trigger, is_paused
+    step_trigger = False
+    is_paused = True
+
     model = mujoco.MjModel.from_xml_path('model/universal_robots_ur5e/scene.xml')
     data = mujoco.MjData(model)
     my_chain = ikpy.chain.Chain.from_urdf_file("model/ur5e.urdf",
                                                active_links_mask=[False, False] + [True] * 6 + [False])
 
-    start_joints = np.array([-1.74929516e+00, -1.37547719e+00, 2.69736147e+00,
-                             -1.32188428e+00, 1.39309382e+00, -1.59265359e-03])
+    start_joints = np.array([-1.74929517e+00, -2.02082105e+00,
+                             2.40160303e+00, -3.80781978e-01,  1.39309381e+00, -1.59265359e-03])
     data.qpos[:6] = start_joints
-
+# -1.74929517e+00 -2.02082105e+00
+#   2.40160303e+00 -3.80781978e-01  1.39309381e+00 -1.59265359e-03
     # 目标末端位姿
-    start_pos=[-0.1,0.3,0.1]
-    ee_pos = [-0.1, 0.8, 0.1]
+    start_pos=[-0.1,0.3,0.3]
+    ee_pos = [-0.1, 0.5, 0.3]
     ee_euler = [3.14, 0, 1.57]
     ref_pos = [0, 0, -1.57, -1.34, 2.65, -1.3, 1.55, 0, 0]
     ee_orientation = tf.euler.euler2mat(*ee_euler)
@@ -225,7 +245,7 @@ def main():
     plotter = ADAMSForcePlotter(update_interval=15)
 
     admittance_controller = AdmittanceController(dt=model.opt.timestep,
-                                                 M=np.diag([2.0, 2.0, 2.0]), 
+                                                 M=np.diag([200.0, 2000.0, 200.0]), 
                                                  D=np.diag([1000.0, 40.0, 1000.0]), 
                                                  K=np.diag([100000.0, 100.0, 100000.0]))
 
@@ -233,55 +253,102 @@ def main():
     box_joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "red_box_joint")
     box_qpos_adr = model.jnt_qposadr[box_joint_id]
 
-    red_box_id=mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "red_box")
-    force_disturbance_generator = PeriodicDisturbanceGenerator(interval=0.5, force_range=(-30.0, -5.0))
+    actuator1_id = mujoco.mj_name2id(
+            model,
+            mujoco.mjtObj.mjOBJ_ACTUATOR,
+            "actuator_paw1"
+    )
+
+    actuator2_id = mujoco.mj_name2id(
+            model,
+            mujoco.mjtObj.mjOBJ_ACTUATOR,
+            "actuator_paw2"
+    )
+
+    actuator3_id = mujoco.mj_name2id(
+        model,
+        mujoco.mjtObj.mjOBJ_ACTUATOR,
+        "actuator_paw3"
+    )
+
+    body_ketitop_id = mujoco.mj_name2id(
+            model,
+            mujoco.mjtObj.mjOBJ_BODY,
+            "WhereIsMyKeti"
+    )
+
+    body_pastop_id = mujoco.mj_name2id(
+                model,
+                mujoco.mjtObj.mjOBJ_BODY,
+                "WhereIsMypas"
+    )
+
+    # # 世界坐标系下的位置 (x, y, z)，单位：m
+    # pos = data.xpos[body_pastop_id].copy()
+    # print(pos)
+
+    # # 世界坐标系下的姿态四元数 (w, x, y, z)
+    # quat = data.xquat[body_pastop_id].copy()
+
+    ctrl_torque=-0.2
+
+    print("\n[控制说明]：点击视窗后，按 [空格] 切换运行/暂停，按 [N] 单步运行。\n")
     
-    with mujoco.viewer.launch_passive(model, data) as viewer:
+    with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
         viewer_init(viewer)
         while viewer.is_running():
+            if not is_paused or step_trigger:
+                step_trigger = False
 
-            # 1. 期望笛卡尔轨迹
-            p_d, v_d = joint_trajectory.get_desired_state(data.time)
+                # 1. 期望笛卡尔轨迹
+                p_d, v_d = joint_trajectory.get_desired_state(data.time)
 
-            # 2. 测量滤波力并转为世界系
-            filtered_force = force_sensor.filter()
-            contact_force_mag = float(np.linalg.norm(filtered_force))
+                # 2. 测量滤波力并转为世界系
+                filtered_force = force_sensor.filter()
+                contact_force_mag = float(np.linalg.norm(filtered_force))
 
-            site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "attachment_site")
-            site_mat = data.site_xmat[site_id].reshape(3, 3)
-            f_world = site_mat @ filtered_force
+                site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "attachment_site")
+                site_mat = data.site_xmat[site_id].reshape(3, 3)
+                f_world = site_mat @ filtered_force
 
-            # 3. 接触判定并计算时变外力扰动 (接触前返回 0.0，接触后周期性生成)
-            f_dist_y = force_disturbance_generator.update(data.time, contact_force_mag)
+                # 5. 导纳控制器更新 (仅保留受力方向/利用高刚度约束)
+                e_x, e_v = admittance_controller.update(f_world)
 
-            # 4. 施加扰动力到盒子 (仅在产生非零扰动时写入)
-            data.xfrc_applied[red_box_id] = np.zeros(6)
-            data.xfrc_applied[red_box_id][4] = f_dist_y  # Y 轴平移阻力
+                p_modify = p_d + e_x
+                now_pos = [0, 0] + list(data.qpos[:6]) + [0]
+                joint_angles = my_chain.inverse_kinematics(
+                    target_position=p_modify,
+                    target_orientation=ee_orientation,
+                    orientation_mode="all",
+                    initial_position=now_pos
+                )[2:-1]
 
-            # 5. 导纳控制器更新 (仅保留受力方向/利用高刚度约束)
-            e_x, e_v = admittance_controller.update(f_world)
+                data.ctrl[:6] = joint_angles
 
-            p_modify = p_d + e_x
-            now_pos = [0, 0] + list(data.qpos[:6]) + [0]
-            joint_angles = my_chain.inverse_kinematics(
-                target_position=p_modify,
-                target_orientation=ee_orientation,
-                orientation_mode="all",
-                initial_position=now_pos
-            )[2:-1]
+                pos_keti=data.xpos[body_ketitop_id].copy()
+                pos_pas=data.xpos[body_pastop_id].copy()
+                print(calc_dist(pos_keti,pos_pas))
+                dist_keti_pas=calc_dist(pos_keti,pos_pas)
+                if dist_keti_pas<0.03:
+                    data.ctrl[6:9]=ctrl_torque
 
-            data.ctrl[:6] = joint_angles
+                print(f"Time: {data.time:.2f}s | Force: {contact_force_mag:.2f}N | e_x_y: {e_x[1]:.4f}m")
 
-            print(f"Time: {data.time:.2f}s | Force: {contact_force_mag:.2f}N | Disturbance: {f_dist_y:.1f}N | e_x_y: {e_x[1]:.4f}m")
+                print(data.ctrl)
 
-            # 6. 物理步进
-            mujoco.mj_step(model, data)
+                # 6. 物理步进
+                mujoco.mj_step(model, data)
 
-            # 7. 测量物理量与更新可视化
-            box_displacement = data.qpos[box_qpos_adr]
-            plotter.update(filtered_force, box_displacement)
+                # 7. 测量物理量与更新可视化
+                box_displacement = data.qpos[box_qpos_adr]
+                plotter.update(filtered_force, box_displacement)
 
-            viewer.sync()
+                viewer.sync()
+
+            else:
+                # 暂停时仍然刷新视窗，保证界面正常响应
+                viewer.sync()
+                time.sleep(1.0 / 60.0)
 
 
 if __name__ == "__main__":

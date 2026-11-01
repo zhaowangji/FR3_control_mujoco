@@ -3,6 +3,7 @@ import mujoco.viewer
 import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
+import time
 
 
 def viewer_init(viewer):
@@ -71,6 +72,13 @@ class ADAMSForcePlotter:
         plt.pause(0.001)
         self.frame_count = 0
 
+def key_callback(keycode):
+    global step_trigger, is_paused
+    if keycode == 32:
+        is_paused = not is_paused
+        print("运行中..." if not is_paused else "已暂停")
+    elif keycode in (ord('N'), ord('n')):
+        step_trigger = True
 
 class ForceSensor:
     def __init__(self, model, data, window_size=50):
@@ -123,7 +131,7 @@ class CartesianLinearTrajectory:
 
 class ImpedanceController:
     """基于目标阻抗动力学模型计算修正控制力"""
-    def __init__(self, M, D, K, mass=1.0):
+    def __init__(self, M, D, K, mass=1):
         self.M = M
         self.D = D
         self.K = K
@@ -181,11 +189,21 @@ class PeriodicDisturbanceGenerator:
         return self.current_force
 
 def main():
+    global step_trigger, is_paused
+    step_trigger = False
+    is_paused = True
+
     model = mujoco.MjModel.from_xml_path('model/universal_robots_ur5e/scene.xml')
     data = mujoco.MjData(model)
 
-    start_joints = np.array([-1.74929516e+00, -1.37547719e+00, 2.69736147e+00,
-                             -1.32188428e+00, 1.39309382e+00, -1.59265359e-03])
+    # 【修复 1】彻底关闭 XML 内置位置执行器的增益与阻尼，转换为纯力矩控制模式
+    model.actuator_gainprm[:, 0] = 0.0
+    model.actuator_biasprm[:, :] = 0.0
+    if model.nu >= 6:
+        data.ctrl[:6] = 0.0
+
+    start_joints = np.array([-1.74929517e+00, -2.02082105e+00,
+                                 2.40160303e+00, -3.80781978e-01,  1.39309381e+00, -1.59265359e-03])
     data.qpos[:6] = start_joints
 
     if model.nu >= 6:
@@ -203,7 +221,7 @@ def main():
 
     start_pos = init_pos.copy()
     ee_pos = init_pos.copy()
-    ee_pos[1] += 0.5  # 沿 Y 轴推进 0.5m
+    ee_pos[1] += 0.55  # 沿 Y 轴推进 0.5m
 
     trajectory = CartesianLinearTrajectory(start_pos, ee_pos, duration=5.0)
 
@@ -212,7 +230,7 @@ def main():
         M=np.diag([2.0, 2.0, 2.0]),
         D=np.diag([100.0, 30.0, 100.0]),
         K=np.diag([300.0, 50.0, 300.0]),
-        mass=1.0
+        mass=21.0
     )
 
     force_sensor = ForceSensor(model, data, window_size=50)
@@ -222,72 +240,72 @@ def main():
     force_disturbance_generator = PeriodicDisturbanceGenerator(interval=0.5, force_range=(-30.0, -5.0))
 
     # 控制参数
-    F_push_ff = np.array([0.0, 10.0, 0.0])  # Y 方向 10N 前馈推力
+    F_push_ff = np.array([0.0, 30.0, 0.0])  # Y 方向 10N 前馈推力
     Kp_rot = 30.0                           # 姿态锁定刚度
     Kd_rot = 3.0                            # 姿态角速度阻尼
     max_torque = 50.0                       # 关节最大力矩保护
 
-    with mujoco.viewer.launch_passive(model, data) as viewer:
+    print("\n[控制说明]：点击视窗后，按 [空格] 切换运行/暂停，按 [N] 单步运行。\n")
+    print("\n修改模型后记得更改impedance_control的mass参数！\n")
+
+    for i in range(model.nbody):
+        b = model.body(i)
+        print(i, b.name, b.mass, b.inertia)
+    
+    with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
         viewer_init(viewer)
         while viewer.is_running():
-            filtered_force = force_sensor.filter()
+            if not is_paused or step_trigger:
+                step_trigger = False
 
-            filtered_force = force_sensor.filter()
-            contact_force_mag = float(np.linalg.norm(filtered_force))
+                # 1. 获取当前末端状态与 6D 雅可比
+                J_6d = compute_6d_jacobian(model, data, site_id)
+                current_pos = data.site_xpos[site_id].copy()
+                current_R = data.site_xmat[site_id].reshape(3, 3).copy()
 
-            # 3. 接触判定并计算时变外力扰动 (接触前返回 0.0，接触后周期性生成)
-            f_dist_y = force_disturbance_generator.update(data.time, contact_force_mag)
+                ee_vel = J_6d @ data.qvel[:6]
+                v_lin = ee_vel[:3]
+                w_rot = ee_vel[3:]
 
-            # 4. 施加扰动力到盒子 (仅在产生非零扰动时写入)
-            data.xfrc_applied[red_box_id] = np.zeros(6)
-            data.xfrc_applied[red_box_id][4] = f_dist_y  # Y 轴平移阻力
+                # 【修复 4】移除重复调用，并将传感器力转换到世界坐标系
+                filtered_force_local = force_sensor.filter()
+                f_world = current_R @ filtered_force_local
+                contact_force_mag = float(np.linalg.norm(f_world))
 
-            # 1. 动力学重力与偏置补偿
-            tau_bias = data.qfrc_bias[:6].copy()
+                # 2. 动力学重力与科氏力偏置补偿
+                tau_bias = data.qfrc_bias[:6].copy()
 
-            # 2. 获取当前末端状态与 6D 雅可比
-            J_6d = compute_6d_jacobian(model, data, site_id)
-            current_pos = data.site_xpos[site_id]
-            current_R = data.site_xmat[site_id].reshape(3, 3)
+                # 3. 计算阻抗控制力
+                p_d, v_d = trajectory.get_desired_state(data.time)
+                F_impedance = impedance_controller.update(p_d, v_d, current_pos, v_lin, f_world)
 
-            ee_vel = J_6d @ data.qvel[:6]
-            v_lin = ee_vel[:3]
-            w_rot = ee_vel[3:]
+                # 4. 组装 6 维末端扳手 (Wrench: 3维线力 + 3维姿态力矩)
+                F_wrench = np.zeros(6)
+                F_wrench[:3] = F_impedance + F_push_ff
 
-            # 3. 计算阻抗控制力（调用实例对象）
-            p_d, v_d = trajectory.get_desired_state(data.time)
-            F_impedance = impedance_controller.update(p_d, v_d, current_pos, v_lin, filtered_force)
+                rot_error = compute_rotation_error(init_R, current_R)
+                F_wrench[3:6] = Kp_rot * rot_error - Kd_rot * w_rot
 
-            # 4. 组装 6 维末端扳手 (Wrench: 3维线力 + 3维姿态力矩)
-            F_wrench = np.zeros(6)
-            # 前三维：阻抗反馈力 + 前馈推力
-            F_wrench[:3] = F_impedance + F_push_ff
+                # 5. 映射到关节空间并叠加重力补偿
+                tau_task = J_6d.T @ F_wrench
+                tau_task = np.clip(tau_task, -max_torque, max_torque)
+                data.qfrc_applied[:6] = tau_bias + tau_task
 
-            # 后三维：姿态刚度锁定（防止末端倾斜/旋转）
-            rot_error = compute_rotation_error(init_R, current_R)
-            F_wrench[3:6] = Kp_rot * rot_error - Kd_rot * w_rot
+                # 6. 物理步进
+                mujoco.mj_step(model, data)
 
-            # 5. 映射到关节空间
-            tau_task = J_6d.T @ F_wrench
-            tau_task = np.clip(tau_task, -max_torque, max_torque)
+                # 7. 测量与绘图
+                box_displacement = data.qpos[box_qpos_adr]
+                plotter.update(f_world, box_displacement)
 
-            # 施加总力矩
-            data.qfrc_applied[:6] = tau_bias + tau_task
+                viewer.sync()
 
-            # 消除自带位置控制器的复位力矩干扰
-            if model.nu >= 6:
-                data.ctrl[:6] = data.qpos[:6]
+                print(f"Time: {data.time:.2f}s | Force: {contact_force_mag:.2f}N | F_control: {F_impedance}")
 
-            # 物理步进
-            mujoco.mj_step(model, data)
-
-            # 测量与绘图
-            box_displacement = data.qpos[box_qpos_adr]
-            plotter.update(filtered_force, box_displacement)
-
-            viewer.sync()
-
-            print(f"Time: {data.time:.2f}s | Force: {contact_force_mag:.2f}N | Disturbance: {f_dist_y:.1f}N | F_control: {F_impedance}")
+            else:
+                # 暂停时仍然刷新视窗，保证界面正常响应
+                viewer.sync()
+                time.sleep(1.0 / 60.0)
 
 
 if __name__ == "__main__":

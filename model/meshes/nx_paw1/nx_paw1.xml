@@ -1,0 +1,94 @@
+<mujoco model="nx_paw1">
+  <default>
+    <default class="visual">
+      <geom group="2" type="mesh" contype="0" conaffinity="0"/>
+    </default>
+    <default class="collision">
+      <geom group="3" type="mesh"/>
+    </default>
+  </default>
+  <asset>
+    <mesh file="nx_paw1.obj"/>
+    <mesh file="nx_paw1_collision_0.obj"/>
+    <mesh file="nx_paw1_collision_1.obj"/>
+    <mesh file="nx_paw1_collision_2.obj"/>
+    <mesh file="nx_paw1_collision_3.obj"/>
+    <mesh file="nx_paw1_collision_4.obj"/>
+    <mesh file="nx_paw1_collision_5.obj"/>
+    <mesh file="nx_paw1_collision_6.obj"/>
+    <mesh file="nx_paw1_collision_7.obj"/>
+    <mesh file="nx_paw1_collision_8.obj"/>
+    <mesh file="nx_paw1_collision_9.obj"/>
+    <mesh file="nx_paw1_collision_10.obj"/>
+    <mesh file="nx_paw1_collision_11.obj"/>
+    <mesh file="nx_paw1_collision_12.obj"/>
+    <mesh file="nx_paw1_collision_13.obj"/>
+    <mesh file="nx_paw1_collision_14.obj"/>
+    <mesh file="nx_paw1_collision_15.obj"/>
+    <mesh file="nx_paw1_collision_16.obj"/>
+    <mesh file="nx_paw1_collision_17.obj"/>
+    <mesh file="nx_paw1_collision_18.obj"/>
+    <mesh file="nx_paw1_collision_19.obj"/>
+    <mesh file="nx_paw1_collision_20.obj"/>
+    <mesh file="nx_paw1_collision_21.obj"/>
+    <mesh file="nx_paw1_collision_22.obj"/>
+    <mesh file="nx_paw1_collision_23.obj"/>
+    <mesh file="nx_paw1_collision_24.obj"/>
+    <mesh file="nx_paw1_collision_25.obj"/>
+    <mesh file="nx_paw1_collision_26.obj"/>
+    <mesh file="nx_paw1_collision_27.obj"/>
+    <mesh file="nx_paw1_collision_28.obj"/>
+    <mesh file="nx_paw1_collision_29.obj"/>
+    <mesh file="nx_paw1_collision_30.obj"/>
+    <mesh file="nx_paw1_collision_31.obj"/>
+    <mesh file="nx_paw1_collision_32.obj"/>
+    <mesh file="nx_paw1_collision_33.obj"/>
+    <mesh file="nx_paw1_collision_34.obj"/>
+    <mesh file="nx_paw1_collision_35.obj"/>
+    <mesh file="nx_paw1_collision_36.obj"/>
+    <mesh file="nx_paw1_collision_37.obj"/>
+  </asset>
+  <worldbody>
+    <body name="nx_paw1">
+      <geom mesh="nx_paw1" class="visual"/>
+      <geom mesh="nx_paw1_collision_0" rgba="0.19372073348710406 0.6337975116991976 0.7556881864060074 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_1" rgba="0.929085748993514 0.5391164868611555 0.2624370061203788 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_2" rgba="0.30903383963210307 0.782680925443671 0.679382592671799 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_3" rgba="0.17096166853607964 0.11088557502145091 0.6685808396833831 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_4" rgba="0.7295933375332208 0.7900767367637166 0.34552617487050963 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_5" rgba="0.10955452602859883 0.4673119641746962 0.9163499076052631 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_6" rgba="0.8536113736446874 0.5827963518919239 0.14452901596514367 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_7" rgba="0.4142499962701066 0.6074563664227147 0.6693485164699512 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_8" rgba="0.011886457318657784 0.43147504441606077 0.763615179639725 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_9" rgba="0.34298422829873465 0.31080415749355406 0.7764802124053074 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_10" rgba="0.9213427687210719 0.39850481318530406 0.08816455327580952 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_11" rgba="0.267876907805638 0.28983356040480646 0.8401358267905689 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_12" rgba="0.9123948135661359 0.10384855674082993 0.931287159728738 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_13" rgba="0.7554540787448604 0.20701904068010346 0.17230542734092047 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_14" rgba="0.7613158584450785 0.7886932618398524 0.22677812871868797 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_15" rgba="0.5371846454269567 0.32979267260696565 0.055089343412939806 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_16" rgba="0.10028499212532138 0.19078158348539664 0.1803554493447469 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_17" rgba="0.757626643416073 0.8975251861098643 0.2693538324945767 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_18" rgba="0.39904653269679446 0.9054332925867699 0.5540361046840949 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_19" rgba="0.9552596842553135 0.6317683930442514 0.012726210463695486 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_20" rgba="0.5350686432758504 0.16766274149950622 0.4747723779824339 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_21" rgba="0.9787640741981618 0.22501428814743218 0.002003246784302859 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_22" rgba="0.9756276089862536 0.16878677840648992 0.8984664387949355 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_23" rgba="0.1198765785705963 0.5995191227735674 0.06801735369651418 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_24" rgba="0.8490276968411078 0.4599057592464564 0.3517137933222584 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_25" rgba="0.8721191128036101 0.2862888292102057 0.7804347926252897 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_26" rgba="0.2412627123261818 0.9974891263942661 0.4535221078306042 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_27" rgba="0.16519894544888958 0.13979392256086343 0.9000052043467955 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_28" rgba="0.2131487065598865 0.7160173259841698 0.8074198476790752 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_29" rgba="0.43599494642807046 0.798958095508291 0.366411970300053 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_30" rgba="0.01197609008641054 0.8501904567670054 0.15095403578471678 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_31" rgba="0.025950300245258684 0.3813556195998272 0.4653948774970661 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_32" rgba="0.45476965147154313 0.8462513416287771 0.08680582637908141 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_33" rgba="0.6474608051860418 0.2760219328602622 0.25486812693465255 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_34" rgba="0.189746499526657 0.05854822998511067 0.4227924083106407 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_35" rgba="0.5994259681175782 0.7507145803461309 0.0966359378188758 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_36" rgba="0.47431980322569334 0.4924966094577279 0.6714305647813246 1" class="collision"/>
+      <geom mesh="nx_paw1_collision_37" rgba="0.7237074456860727 0.11099217959215046 0.15224877941342352 1" class="collision"/>
+    </body>
+  </worldbody>
+</mujoco>

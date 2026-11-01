@@ -1,5 +1,8 @@
 <mujoco model="ur5e scene">
+
   <include file="ur5e.xml"/>
+
+  <option timestep="0.001" gravity="0 0 0"/>
 
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0 0 0"/>
@@ -27,31 +30,32 @@
                   conaffinity="0"/>
     </body>
     
-    <body name="init_pos" pos="-0.1 0.3 0.1">
+    <body name="init_pos" pos="-0.1 0.3 0.3">
         <geom size="0.02" rgba="0 1 0 0.5" contype="0" conaffinity="0"/>
     </body>
 
-    <body name="end_pos" pos="-0.1 0.8 0.1">
+    <body name="end_pos" pos="-0.1 0.5 0.3">
         <geom size="0.02" rgba="0 1 0 0.5" contype="0" conaffinity="0"/>
     </body>
 
-    <body name="red_box" pos="-0.1 0.5 0.1" euler="0 0 0">
+    <!-- <body name="red_box" pos="-0.1 0.5 0.1" euler="0 0 0">
         <joint name="red_box_joint" type="slide" axis="0 1 0"
           stiffness="30.0" damping="0.0" springref="0.0"/>
         <geom name="red_box_geom" type="box" size="0.1 0.1 0.1" rgba="1 0 0 1" mass="1.0"/>
-    </body>
+    </body> -->
 
   </worldbody>
   <!--你需要添加的-->
   <sensor>
-      <force site="force_sensor_site"/>
+      <force name="force_sensor" site="force_sensor_site"/>
   </sensor>
 
   <!-- 显式覆盖特定接触对的摩擦力 -->
-  <contact>
     <!-- friction 格式为 5 维：[滑动 1, 滑动 2, 扭转, 滚转 1, 滚转 2] -->
     <!-- 将前两项滑动摩擦设为 0 -->
+  <!-- <contact>
+
     <pair geom1="floor" geom2="red_box_geom" friction="0 0 0 0 0"/>
-  </contact>
+  </contact> -->
 
 </mujoco>
