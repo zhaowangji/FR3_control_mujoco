@@ -245,9 +245,9 @@ def main():
     plotter = ADAMSForcePlotter(update_interval=15)
 
     admittance_controller = AdmittanceController(dt=model.opt.timestep,
-                                                 M=np.diag([200.0, 2000.0, 200.0]), 
-                                                 D=np.diag([1000.0, 40.0, 1000.0]), 
-                                                 K=np.diag([100000.0, 100.0, 100000.0]))
+                                                 M=np.diag([200.0, 400.0, 200.0]), 
+                                                 D=np.diag([1000.0, 100.0, 1000.0]), 
+                                                 K=np.diag([100000.0, 1000.0, 100000.0]))
 
     # 查找 red_box 关节 ID 用于快速索引
     box_joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "red_box_joint")
